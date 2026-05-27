@@ -159,143 +159,73 @@ function statusBorder(s) { return (STATUS_META[s]||{border:'#e2e8f0'}).border; }
 // ─────────────────────────────────────────────
 // SEARCH FUNCTIONS
 // ─────────────────────────────────────────────
-
+// ─────────────────────────────────────────────
+// NEW DIRECT GOOGLE MAPS PLACES SEARCH
+// ─────────────────────────────────────────────
 async function searchRoofingCompanies(city, state) {
-  try {
-    const response = await fetch('/api/search-companies', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ city, state })
-    });
-
-    if (!response.ok) {
-      throw new Error('API request failed');
+  return new Promise((resolve, reject) => {
+    // Ensure the Google Maps library is loaded
+    if (!window.google || !window.google.maps || !window.google.maps.places) {
+      reject(new Error("Google Maps library not fully loaded yet."));
+      return;
     }
 
-    const data = await response.json();
-    
-    if (data.error) {
-      throw new Error(data.error);
-    }
+    // Create a temporary hidden map div for the service to hook into if needed
+    const dummyElem = document.createElement('div');
+    const service = new google.maps.places.PlacesService(dummyElem);
 
-    return data.companies;
-  } catch (err) {
-    console.error('Search API Error:', err);
-    throw err;
-  }
-}
+    // This tells Google exactly what to search for on Maps
+    const request = {
+      query: `roofing companies in ${city}, ${state}`,
+      type: ['roofing_contractor']
+    };
 
-function generateFallbackCompanies(city, state) {
-  const companyTemplates = [
-    { name: 'Premier Roofing', suffix: 'Solutions' },
-    { name: 'Skyline Roof', suffix: 'Contractors' },
-    { name: 'Apex Roofing', suffix: '& Repair' },
-    { name: 'Guardian Roofing', suffix: 'Co' },
-    { name: 'Elite Roof', suffix: 'Services' },
-    { name: 'Coastal Roofing', suffix: 'Specialists' },
-    { name: 'All Weather Roofing', suffix: null },
-    { name: 'Superior Roof', suffix: 'Maintenance' },
-    { name: 'Pro Roofing', suffix: 'Group' },
-    { name: 'Certified Roofing', suffix: 'Contractors' },
-    { name: 'Reliable Roof', suffix: 'Repair' },
-    { name: 'American Roofing', suffix: 'Company' },
-    { name: 'Quality Roof', suffix: 'Systems' },
-    { name: 'Expert Roofing', suffix: 'Services' },
-    { name: 'Paramount Roofing', suffix: 'Inc' },
-  ];
+    // Execute the live Google Maps text search
+    service.textSearch(request, (results, status) => {
+      if (status !== google.maps.places.PlacesServiceStatus.OK || !results) {
+        console.error("Google Places Error Status:", status);
+        resolve([]); // Return empty array so app safely handles no results
+        return;
+      }
 
-  const streets = [
-    'Main Street', 'Oak Avenue', 'Maple Drive', 'Pine Road', 'Elm Street',
-    'Commerce Boulevard', 'Industrial Way', 'Business Park Drive', 'Enterprise Drive',
-    'Corporate Lane', 'Tech Center Drive', 'Innovation Way'
-  ];
+      // Format Google's real data to match your RoofRoute app structure
+      const formattedCompanies = results.map(place => {
+        // Split address fields out of Google's formatted address string if possible
+        const addressParts = place.formatted_address ? place.formatted_address.split(',') : [];
+        const street = addressParts[0] || '';
 
-  const areaCodeMap = {
-    'FL': { start: '321', zip: '32' },
-    'CA': { start: '916', zip: '95' },
-    'TX': { start: '512', zip: '78' },
-    'NY': { start: '212', zip: '10' },
-    'PA': { start: '717', zip: '17' },
-    'OH': { start: '614', zip: '43' }
-  };
+        return {
+          id: genId(),
+          companyName: place.name,
+          streetAddress: street,
+          city: city,
+          state: state,
+          zip: '', // Places textSearch provides a consolidated string; full details can be manually edited later
+          phone: '', 
+          email: '',
+          website: '',
+          status: 'Not Visited',
+          interest: '',
+          supplier: '',
+          attemptCount: 0,
+          lastVisit: null,
+          lastContact: '',
+          contactTitle: '',
+          notes: 'Added via direct Google Maps search.',
+          accessType: 'Unknown',
+          priority: 2,
+          followUpDate: null,
+          // Storing real exact map coordinates for your pins!
+          latitude: place.geometry && place.geometry.location ? place.geometry.location.lat() : null,
+          longitude: place.geometry && place.geometry.location ? place.geometry.location.lng() : null
+        };
+      });
 
-  const area = areaCodeMap[state] || { start: '555', zip: '12' };
-  const count = 8 + Math.floor(Math.random() * 5);
-  const companies = [];
-
-  for (let i = 0; i < count; i++) {
-    const template = companyTemplates[i % companyTemplates.length];
-    const companyName = template.suffix 
-      ? `${template.name} ${template.suffix}`
-      : template.name;
-
-    const streetNum = 100 + (i * 150);
-    const streetName = streets[i % streets.length];
-    
-    companies.push({
-      id: genId(),
-      companyName: companyName,
-      streetAddress: `${streetNum} ${streetName}`,
-      city: city,
-      state: state,
-      zip: `${area.zip}${String(900 + i).slice(-3)}`,
-      phone: `${area.start}-${String(5500 + i).padStart(4, '0')}`,
-      email: `info@${companyName.toLowerCase().replace(/\s+/g, '')}${i}.com`,
-      website: `www.${companyName.toLowerCase().replace(/\s+/g, '')}${i}.com`,
-      status: 'Not Visited',
-      interest: '',
-      supplier: '',
-      attemptCount: 0,
-      lastVisit: null,
-      lastContact: '',
-      contactTitle: '',
-      notes: 'Added from search',
-      accessType: 'Unknown',
-      priority: 3,
-      followUpDate: null
+      resolve(formattedCompanies);
     });
-  }
-
-  return companies;
+  });
 }
 
-// ─────────────────────────────────────────────
-// DEMO DATA
-// ─────────────────────────────────────────────
-const DEMO = [
-  { id:genId(), companyName:'Brevard Roofing Co', streetAddress:'1234 US-1 South', city:'Melbourne', state:'FL', zip:'32901', phone:'3215550101', email:'info@brevardroofing.com', website:'', status:'Not Visited', interest:'', supplier:'', attemptCount:0, lastVisit:null, lastContact:'', contactTitle:'', notes:'', accessType:'Walk-In Office', priority:2, followUpDate:null },
-  { id:genId(), companyName:'Space Coast Metal Roofing', streetAddress:'567 Babcock St NE', city:'Melbourne', state:'FL', zip:'32935', phone:'3215550202', email:'sc@metalroof.com', website:'', status:'Warm Lead', interest:'Warm', supplier:'ABC Metals', attemptCount:1, lastVisit:new Date(Date.now()-5*864e5).toISOString(), lastContact:'Mike Torres', contactTitle:'Estimator', notes:'Interested in standing seam. Has 2 commercial jobs in pipeline. Call back Thursday.', accessType:'Walk-In Office', priority:1, followUpDate:todayStr() },
-  { id:genId(), companyName:'Palm Bay Roofing & Sheet Metal', streetAddress:'890 Malabar Rd SW', city:'Palm Bay', state:'FL', zip:'32907', phone:'3215550303', email:'sarah@palmbayroofing.com', website:'', status:'Hot Lead', interest:'Hot', supplier:'XYZ Supply Co', attemptCount:2, lastVisit:new Date(Date.now()-2*864e5).toISOString(), lastContact:'Sarah Kim', contactTitle:'Owner', notes:'Very interested! Has 50k sqft commercial job coming up. Wants pricing on 5V crimp and standing seam.', accessType:'Front Desk', priority:1, followUpDate:todayStr() },
-  { id:genId(), companyName:'Coastal Contractors LLC', streetAddress:'321 Wickham Rd', city:'Melbourne', state:'FL', zip:'32940', phone:'', email:'', website:'', status:'No Contact', interest:'', supplier:'', attemptCount:1, lastVisit:new Date(Date.now()-1*864e5).toISOString(), lastContact:'', contactTitle:'', notes:'Office was closed when I stopped by. Lights on in warehouse.', accessType:'Warehouse Office', priority:3, followUpDate:null },
-  { id:genId(), companyName:'Titusville Roof Pros', streetAddress:'445 Garden St', city:'Titusville', state:'FL', zip:'32796', phone:'3215550505', email:'', website:'', status:'Not Visited', interest:'', supplier:'', attemptCount:0, lastVisit:null, lastContact:'', contactTitle:'', notes:'', accessType:'Unknown', priority:2, followUpDate:null },
-  { id:genId(), companyName:'Cocoa Roofing Solutions', streetAddress:'112 Dixon Blvd', city:'Cocoa', state:'FL', zip:'32922', phone:'3215550606', email:'cocoareof@email.com', website:'', status:'Follow Up', interest:'Warm', supplier:'Southeast Metals', attemptCount:1, lastVisit:new Date(Date.now()-10*864e5).toISOString(), lastContact:'Dave Lopez', contactTitle:'Purchasing', notes:'Asked for price list. Said to come back in 2 weeks when his current contract ends.', accessType:'Walk-In Office', priority:1, followUpDate:new Date(Date.now()+4*864e5).toISOString().split('T')[0] },
-];
-
-function StatusBadge({ status, sm }) {
-  const m = STATUS_META[status] || { color:'#64748b', bg:'#f8fafc', border:'#e2e8f0' };
-  return (
-    <span style={{ background:m.bg, color:m.color, border:`1px solid ${m.border}`, borderRadius:20,
-      padding: sm ? '2px 8px' : '4px 12px', fontSize: sm ? 11 : 12, fontWeight:700, whiteSpace:'nowrap' }}>
-      {status}
-    </span>
-  );
-}
-
-function InfoTile({ label, value }) {
-  if (!value && value !== 0) return null;
-  return (
-    <div style={{ background:'#f8fafc', borderRadius:10, padding:'9px 12px' }}>
-      <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:0.5, marginBottom:2 }}>{label}</div>
-      <div style={{ fontSize:14, color:'#1e293b', fontWeight:600 }}>{value}</div>
-    </div>
-  );
-}
-
-function SectionHeader({ title }) {
-  return <div style={{ fontSize:11, fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:0.8, marginBottom:8, marginTop:4 }}>{title}</div>;
-}
 
 // ─────────────────────────────────────────────
 // SEARCH COMPANIES MODAL (WITH INTERACTIVE MAP)
