@@ -1193,4 +1193,570 @@ function LogScreen({ visits, companies, onSelect }) {
               const co = companies.find(c=>c.id===v.companyId);
               return (
                 <div key={v.id} onClick={()=>co&&onSelect(co)}
-                  style={{ background:'white', borderRadius:14, padding:'12px 14px', marginBottom:10, boxShadow:'0 1px 4px rgba(0,0,0,0.08)', cursor:co?'pointer':'
+                  style={{ background:'white', borderRadius:14, padding:'12px 14px', marginBottom:10, boxShadow:'0 1px 4px rgba(0,0,0,0.08)', cursor:co?'pointer':'default' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:2 }}>
+                    <span style={{ fontWeight:800, fontSize:14, color:'#1e293b' }}>{v.companyName}</span>
+                    <span style={{ fontSize:13, color:v.spoke?'#15803d':'#dc2626', fontWeight:700 }}>{v.spoke?'✅':'❌'}</span>
+                  </div>
+                  <div style={{ fontSize:12, color:'#94a3b8', marginBottom:4 }}>{fmtDate(v.visitDate)} · {fmtTime(v.visitDate)}</div>
+                  <div style={{ fontSize:13, color:'#475569' }}>
+                    {v.outcome}{v.contactName?` · ${v.contactName}`:''}{v.interest?` (${v.interest})`:''}{v.notes?` — ${v.notes.substring(0,60)}${v.notes.length>60?'...':''}` : ''}
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// PERFORMANCE SCREEN
+// ─────────────────────────────────────────────
+function DashboardScreen({ companies, visits }) {
+  const [selectedStat, setSelectedStat] = useState(null);
+  const today = todayStr();
+  const todayVisits = visits.filter(v=>v.visitDate&&v.visitDate.startsWith(today));
+  const spoke = visits.filter(v=>v.spoke).length;
+  const rate = visits.length ? Math.round(spoke/visits.length*100) : 0;
+
+  const metrics = [
+    { icon:'🏢', label:'Companies',    val:companies.length,                                 color:'#2563eb' },
+    { icon:'🚪', label:'Total Visits', val:visits.length,                                    color:'#7c3aed' },
+    { icon:'🔥', label:'Hot Leads',    val:companies.filter(c=>c.status==='Hot Lead').length, color:'#dc2626' },
+    { icon:'☀️', label:'Warm Leads',   val:companies.filter(c=>c.status==='Warm Lead').length,color:'#d97706' },
+    { icon:'✅', label:'Customers',    val:companies.filter(c=>c.status==='Customer').length, color:'#15803d' },
+    { icon:'📅', label:'Due Today',    val:companies.filter(c=>c.followUpDate&&c.followUpDate<=today).length, color:'#0891b2' },
+    { icon:'📋', label:'Today Visits', val:todayVisits.length,                               color:'#7c3aed' },
+    { icon:'💬', label:'Spoke Today',  val:todayVisits.filter(v=>v.spoke).length,            color:'#15803d' },
+  ];
+
+  const pipeline = STATUS_TYPES.map(s=>({
+    s, count:companies.filter(c=>c.status===s).length, color:statusColor(s)
+  })).filter(x=>x.count>0).sort((a,b)=>(STATUS_PRIORITY[a.s]??99)-(STATUS_PRIORITY[b.s]??99));
+
+  return (
+    <div className="screen">
+      <div style={{ background:'#1e3a5f', padding:'18px 16px' }}>
+        <div style={{ color:'white', fontSize:22, fontWeight:900, letterSpacing:-0.5 }}>📊 Performance</div>
+        <div style={{ color:'rgba(255,255,255,0.65)', fontSize:13, marginTop:4 }}>Territory overview</div>
+      </div>
+
+      <div style={{ padding:'14px 12px 90px' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10, marginBottom:16 }}>
+          {metrics.map(m=>(
+            <div key={m.label} className="stat-box" onClick={()=>setSelectedStat(m)} style={{ background:'white', borderRadius:14, padding:'14px 16px', boxShadow:'0 1px 4px rgba(0,0,0,0.08)' }}>
+              <div style={{ fontSize:22, marginBottom:4 }}>{m.icon}</div>
+              <div style={{ fontSize:30, fontWeight:900, color:m.color, lineHeight:1 }}>{m.val}</div>
+              <div style={{ fontSize:12, color:'#94a3b8', fontWeight:700, marginTop:3 }}>{m.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {visits.length > 0 && (
+          <div className="card" style={{ marginBottom:14 }}>
+            <SectionHeader title="Contact Rate (All Time)" />
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+              <span style={{ fontSize:14, color:'#374151' }}>Spoke with someone</span>
+              <span style={{ fontWeight:800, color:'#15803d' }}>{spoke}/{visits.length} ({rate}%)</span>
+            </div>
+            <div style={{ background:'#e5e7eb', borderRadius:6, height:10 }}>
+              <div style={{ background:'#15803d', height:10, borderRadius:6, width:`${rate}%`, transition:'width 0.5s' }} />
+            </div>
+          </div>
+        )}
+
+        <div className="card">
+          <SectionHeader title="Pipeline Breakdown" />
+          {pipeline.map(p=>(
+            <div key={p.s} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'9px 0', borderBottom:'1px solid #f8fafc' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <div style={{ width:10, height:10, borderRadius:'50%', background:p.color, flexShrink:0 }} />
+                <span style={{ fontSize:14, color:'#374151', fontWeight:600 }}>{p.s}</span>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <div style={{ background:'#f1f5f9', borderRadius:4, height:7, width:90 }}>
+                  <div style={{ background:p.color, height:7, borderRadius:4, width:`${companies.length?Math.round(p.count/companies.length*100):0}%` }} />
+                </div>
+                <span style={{ fontSize:14, fontWeight:800, color:'#374151', minWidth:26, textAlign:'right' }}>{p.count}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {selectedStat && <StatDetailModal stat={selectedStat} data={companies} onClose={()=>setSelectedStat(null)} />}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// MASTER FILE MODAL
+// ─────────────────────────────────────────────
+function MasterFileModal({ companies, onUpdateStatus, onClose }) {
+  const sorted = [...companies].sort((a,b)=>a.companyName.localeCompare(b.companyName));
+  const [filterStatus, setFilterStatus] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filtered = sorted.filter(c => {
+    const matchSearch = !searchTerm || c.companyName.toLowerCase().includes(searchTerm.toLowerCase()) || c.city.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchStatus = !filterStatus || c.status === filterStatus;
+    return matchSearch && matchStatus;
+  });
+
+  return (
+    <div className="modal-full">
+      <div style={{ background:'#1e3a5f', color:'white', padding:'14px 16px', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
+        <button onClick={onClose} style={{ background:'rgba(255,255,255,0.18)', border:'none', color:'white', borderRadius:10, padding:'7px 13px', fontSize:15, cursor:'pointer', fontWeight:700 }}>✕</button>
+        <div style={{ fontWeight:800, fontSize:17 }}>📋 Master File</div>
+      </div>
+
+      <div style={{ flex:1, overflowY:'auto', padding:'16px', display:'flex', flexDirection:'column' }}>
+        <div style={{ marginBottom:12, display:'flex', gap:8 }}>
+          <input type="text" placeholder="Search..." value={searchTerm} onChange={e=>setSearchTerm(e.target.value)}
+            className="field-input" style={{ flex:1, marginBottom:0 }} />
+          <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}
+            className="field-input" style={{ flex:1, marginBottom:0, background:'white' }}>
+            <option value="">All Status</option>
+            {STATUS_TYPES.map(s=><option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+
+        <div style={{ fontSize:12, color:'#94a3b8', fontWeight:700, marginBottom:12 }}>
+          {filtered.length} of {companies.length} companies
+        </div>
+
+        <div style={{ flex:1, overflowY:'auto' }}>
+          {filtered.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'60px 20px', color:'#94a3b8' }}>
+              <div style={{ fontSize:40, marginBottom:8 }}>—</div>
+              <div>No companies match your search</div>
+            </div>
+          ) : (
+            filtered.map((c,idx) => {
+              const today = todayStr();
+              const isDueToday = c.followUpDate && c.followUpDate <= today && !['Not Interested','Not Canvassable','Wrong Business'].includes(c.status);
+              return (
+                <div key={c.id} style={{ background:'white', borderRadius:12, padding:'12px 14px', marginBottom:10, border: isDueToday ? '2px solid #dc2626' : '1px solid #e2e8f0' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:15, fontWeight:800, color:'#1e293b', marginBottom:2 }}>{idx+1}. {c.companyName}</div>
+                      <div style={{ fontSize:12, color:'#64748b', marginBottom:4 }}>{c.city}, {c.state}</div>
+                      <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
+                        <StatusBadge status={c.status} />
+                        {isDueToday && <span style={{ background:'#fef2f2', color:'#dc2626', borderRadius:4, padding:'2px 8px', fontSize:11, fontWeight:700 }}>⏰ Due Today</span>}
+                        {c.followUpDate && !isDueToday && <span style={{ background:'#f1f5f9', color:'#64748b', borderRadius:4, padding:'2px 8px', fontSize:11, fontWeight:700 }}>📅 {fmtShort(c.followUpDate)}</span>}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+                    {c.status !== 'Customer' && c.status !== 'Not Interested' && (
+                      <button className="btn btn-green" onClick={()=>onUpdateStatus(c.id, 'Customer')} style={{ fontSize:12, minHeight:36, padding:'8px 12px' }}>
+                        ✅ Mark Customer
+                      </button>
+                    )}
+                    {c.status !== 'Not Interested' && (
+                      <button className="btn btn-gray" onClick={()=>onUpdateStatus(c.id, 'Not Interested')} style={{ fontSize:12, minHeight:36, padding:'8px 12px' }}>
+                        ✗ Not Interested
+                      </button>
+                    )}
+                    {c.followUpDate && (
+                      <button className="btn btn-outline" onClick={()=>onUpdateStatus(c.id, c.status, null)} style={{ fontSize:12, minHeight:36, padding:'8px 12px', gridColumn:'1/3', background:'#fff7ed' }}>
+                        🗑️ Clear Follow-up
+                      </button>
+                    )}
+                  </div>
+
+                  {c.notes && (
+                    <div style={{ background:'#fffbeb', borderRadius:8, padding:'8px 10px', marginTop:8, fontSize:12, color:'#78350f', borderLeft:'3px solid #f59e0b' }}>
+                      {c.notes}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// MORE SCREEN
+// ─────────────────────────────────────────────
+function MoreScreen({ companies, visits, onImport, onReset }) {
+  const [msg, setMsg] = useState('');
+  const [showMasterFile, setShowMasterFile] = useState(false);
+  const flash = (m) => { setMsg(m); setTimeout(()=>setMsg(''),3500); };
+
+  const handleUpdateStatus = (companyId, newStatus, newFollowUpDate = undefined) => {
+    onImport(companies.map(c => 
+      c.id === companyId 
+        ? { 
+            ...c, 
+            status: newStatus,
+            followUpDate: newFollowUpDate === null ? null : (newFollowUpDate || c.followUpDate)
+          }
+        : c
+    ));
+    flash('✅ Updated!');
+  };
+
+  const exportCSV = () => {
+    const header = ['Company Name','Address','City','State','ZIP','Phone','Email','Website','Status','Interest','Supplier','Attempts','Last Visit','Contact','Title','Notes','Access Type','Follow-Up Date'];
+    const rows = companies.map(c=>[
+      c.companyName, c.streetAddress, c.city, c.state, c.zip, c.phone, c.email, c.website,
+      c.status, c.interest, c.supplier, c.attemptCount||0,
+      c.lastVisit ? fmtDate(c.lastVisit) : '', c.lastContact, c.contactTitle,
+      (c.notes||'').replace(/\n/g,' ').replace(/,/g,';'), c.accessType, c.followUpDate||''
+    ].map(v=>`"${v||''}"`).join(','));
+    const blob = new Blob([[header.map(h=>`"${h}"`).join(','), ...rows].join('\n')], {type:'text/csv'});
+    const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`roofroute-${todayStr()}.csv`; a.click();
+    flash('✅ CSV exported!');
+  };
+
+  const backupJSON = () => {
+    const blob = new Blob([JSON.stringify({companies,visits,date:new Date().toISOString()},null,2)],{type:'application/json'});
+    const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`roofroute-backup-${todayStr()}.json`; a.click();
+    flash('✅ Backup saved!');
+  };
+
+  const importCSV = (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const lines = ev.target.result.split('\n').filter(l=>l.trim());
+      const hdr = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,'').toLowerCase());
+      const newCos = [];
+      for (let i=1;i<lines.length;i++) {
+        const vals = lines[i].split(',').map(v=>v.trim().replace(/^"|"$/g,''));
+        if (!vals[0]) continue;
+        const r = {}; hdr.forEach((h,idx)=>{ r[h]=vals[idx]||''; });
+        newCos.push({
+          id:genId(),
+          companyName: r['company name']||r['companyname']||vals[0]||'',
+          streetAddress: r['address']||r['street address']||vals[1]||'',
+          city: r['city']||vals[2]||'',
+          state: r['state']||vals[3]||'FL',
+          zip: r['zip']||r['zipcode']||vals[4]||'',
+          phone: r['phone']||vals[5]||'',
+          email: r['email']||vals[6]||'',
+          website: r['website']||vals[7]||'',
+          status:'Not Visited', interest:'', supplier:'', attemptCount:0,
+          lastVisit:null, lastContact:'', contactTitle:'', notes:'',
+          accessType:'Unknown', priority:2, followUpDate:null
+        });
+      }
+      onImport(newCos);
+      flash(`✅ Imported ${newCos.length} companies!`);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const restoreJSON = (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (data.companies) onImport(data.companies, data.visits||[]);
+        flash('✅ Backup restored!');
+      } catch { flash('❌ Invalid backup file'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const Section = ({title, children}) => (
+    <div className="card" style={{ marginBottom:12 }}>
+      <div style={{ fontSize:15, fontWeight:900, color:'#1e293b', marginBottom:14 }}>{title}</div>
+      {children}
+    </div>
+  );
+
+  return (
+    <div className="screen">
+      <div style={{ background:'#1e3a5f', padding:'18px 16px' }}>
+        <div style={{ color:'white', fontSize:22, fontWeight:900 }}>⚙️ More</div>
+        <div style={{ color:'rgba(255,255,255,0.65)', fontSize:13, marginTop:4 }}>Import, export & settings</div>
+      </div>
+
+      <div style={{ padding:'14px 12px 90px' }}>
+        {msg && (
+          <div style={{ background:'#f0fdf4', border:'1.5px solid #86efac', borderRadius:12, padding:'12px 16px', marginBottom:12, color:'#15803d', fontWeight:800 }}>{msg}</div>
+        )}
+
+        <button className="btn btn-primary" onClick={()=>setShowMasterFile(true)} style={{ width:'100%', minHeight:56, fontSize:17, marginBottom:14, justifyContent:'flex-start', gap:12 }}>
+          <span style={{ fontSize:20 }}>📋</span> <span>View Master File</span>
+        </button>
+
+        <Section title="📊 Data Summary">
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>
+            <div style={{ textAlign:'center' }}>
+              <div style={{ fontSize:28, fontWeight:900, color:'#2563eb' }}>{companies.length}</div>
+              <div style={{ fontSize:12, color:'#94a3b8', fontWeight:700 }}>Companies</div>
+            </div>
+            <div style={{ textAlign:'center' }}>
+              <div style={{ fontSize:28, fontWeight:900, color:'#7c3aed' }}>{visits.length}</div>
+              <div style={{ fontSize:12, color:'#94a3b8', fontWeight:700 }}>Visits</div>
+            </div>
+            <div style={{ textAlign:'center' }}>
+              <div style={{ fontSize:28, fontWeight:900, color:'#dc2626' }}>{companies.filter(c=>['Hot Lead','Warm Lead'].includes(c.status)).length}</div>
+              <div style={{ fontSize:12, color:'#94a3b8', fontWeight:700 }}>Leads</div>
+            </div>
+          </div>
+        </Section>
+
+        <Section title="📥 Import">
+          <div style={{ marginBottom:14 }}>
+            <div style={{ fontSize:14, fontWeight:700, color:'#374151', marginBottom:4 }}>Import CSV</div>
+            <div style={{ fontSize:12, color:'#94a3b8', marginBottom:8 }}>Format: Company Name, Address, City, State, ZIP, Phone, Email, Website</div>
+            <label style={{ display:'block', cursor:'pointer' }}>
+              <div className="btn btn-outline" style={{ width:'100%', cursor:'pointer' }}>📂 Choose CSV File</div>
+              <input type="file" accept=".csv,.txt" onChange={importCSV} style={{ display:'none' }} />
+            </label>
+          </div>
+          <div>
+            <div style={{ fontSize:14, fontWeight:700, color:'#374151', marginBottom:4 }}>Restore JSON Backup</div>
+            <label style={{ display:'block', cursor:'pointer' }}>
+              <div className="btn btn-outline" style={{ width:'100%', cursor:'pointer' }}>🔄 Choose JSON File</div>
+              <input type="file" accept=".json" onChange={restoreJSON} style={{ display:'none' }} />
+            </label>
+          </div>
+        </Section>
+
+        <Section title="📤 Export">
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            <button className="btn btn-outline" onClick={exportCSV} style={{ justifyContent:'flex-start', gap:10 }}>📊 Export Companies as CSV</button>
+            <button className="btn btn-outline" onClick={backupJSON} style={{ justifyContent:'flex-start', gap:10 }}>💾 Full Backup (JSON)</button>
+          </div>
+        </Section>
+
+        <div className="card" style={{ marginBottom:12, background:'#eff6ff', border:'1.5px solid #bfdbfe' }}>
+          <div style={{ fontSize:14, fontWeight:800, color:'#1d4ed8', marginBottom:6 }}>📲 Install as App</div>
+          <div style={{ fontSize:13, color:'#1e40af', lineHeight:1.6 }}>
+            To install on iPhone: tap Share → Add to Home Screen.<br />
+            On Android: tap the menu (⋮) → Add to Home Screen.
+          </div>
+        </div>
+
+        <button className="btn btn-gray" onClick={onReset} style={{ width:'100%', marginBottom:12 }}>
+          🔄 Reset to Demo Data
+        </button>
+
+        <div style={{ textAlign:'center', color:'#cbd5e1', fontSize:12, paddingBottom:8 }}>
+          <div style={{ fontWeight:800, fontSize:14, color:'#94a3b8', marginBottom:4 }}>RoofRoute v1.0</div>
+          <div>Find roofers. Route smarter. Follow up faster.</div>
+          <div style={{ marginTop:4 }}>All data stored locally on this device.</div>
+        </div>
+      </div>
+
+      {showMasterFile && <MasterFileModal companies={companies} onUpdateStatus={handleUpdateStatus} onClose={()=>setShowMasterFile(false)} />}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// BOTTOM NAV
+// ─────────────────────────────────────────────
+function BottomNav({ active, onChange, badge }) {
+  const tabs = [
+    { id:'home',      icon:'🏠', label:'Home'  },
+    { id:'route',     icon:'🗺', label:'Route' },
+    { id:'log',       icon:'📋', label:'Log',  badge },
+    { id:'dashboard', icon:'📊', label:'Stats' },
+    { id:'more',      icon:'⚙️', label:'More'  },
+  ];
+  return (
+    <div className="bottom-nav" style={{ background:'white', borderTop:'1.5px solid #f1f5f9', display:'flex' }}>
+      {tabs.map(t=>(
+        <button key={t.id} onClick={()=>onChange(t.id)}
+          style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'8px 2px', border:'none', background:'transparent', cursor:'pointer', position:'relative', minHeight:58, fontFamily:'inherit' }}>
+          <div style={{ position:'relative' }}>
+            <span style={{ fontSize:22 }}>{t.icon}</span>
+            {t.badge > 0 && (
+              <span style={{ position:'absolute', top:-6, right:-10, background:'#dc2626', color:'white', fontSize:10, fontWeight:900, borderRadius:10, padding:'1px 5px', minWidth:17, textAlign:'center' }}>{t.badge}</span>
+            )}
+          </div>
+          <span style={{ fontSize:10, marginTop:2, fontWeight: active===t.id ? 800 : 600, color: active===t.id ? '#2563eb' : '#94a3b8', letterSpacing:-0.2 }}>{t.label}</span>
+          {active===t.id && <div style={{ position:'absolute', bottom:0, left:'50%', transform:'translateX(-50%)', width:28, height:3, background:'#2563eb', borderRadius:2 }} />}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// MAIN APP ENTRY
+// ─────────────────────────────────────────────
+function App() {
+  const [companies,  setCompanies]  = useState(()=>load('rr_companies', DEMO));
+  const [visits,     setVisits]     = useState(()=>load('rr_visits', []));
+  const [activeTab,  setActiveTab]  = useState('home');
+  const [territory,  setTerritory]  = useState(()=>load('rr_territory',''));
+  const [recent,     setRecent]     = useState(()=>load('rr_recent',['Melbourne','Palm Bay','West Melbourne','Cocoa','Titusville']));
+
+  const [selected,       setSelected]       = useState(null);
+  const [showDetail,     setShowDetail]     = useState(false);
+  const [showVisitLog,   setShowVisitLog]   = useState(false);
+  const [showDuplicate,  setShowDuplicate]  = useState(false);
+  const [showAddCo,      setShowAddCo]      = useState(false);
+  const [showPostVisit,  setShowPostVisit]  = useState(false);
+  const [showSearch,     setShowSearch]     = useState(false);
+  const [editingCo,      setEditingCo]      = useState(null);
+  const [lastVisit,      setLastVisit]      = useState(null);
+
+  useEffect(()=>{ save('rr_companies', companies); }, [companies]);
+  useEffect(()=>{ save('rr_visits',    visits);    }, [visits]);
+  useEffect(()=>{ save('rr_territory', territory); }, [territory]);
+  useEffect(()=>{ save('rr_recent',    recent);    }, [recent]);
+
+  const today = todayStr();
+  const followUpBadge = companies.filter(c=>c.followUpDate&&c.followUpDate<=today&&!['Not Interested','Not Canvassable','Wrong Business'].includes(c.status)).length;
+
+  const selectCompany = useCallback((co) => { setSelected(co); setShowDetail(true); }, []);
+
+  const openLogVisit = useCallback((co) => {
+    const prevVisit = visits.find(v=>v.companyId===co.id);
+    if (prevVisit && (co.attemptCount||0) > 0) {
+      setSelected(co); setShowDetail(false); setShowDuplicate(true);
+    } else {
+      setSelected(co); setShowDetail(false); setShowVisitLog(true);
+    }
+  }, [visits]);
+
+  const handleVisitSave = useCallback((visit, newStatus, contactName, contactTitle, supplier, followUpDate, notes) => {
+    setVisits(prev=>[visit,...prev]);
+    setCompanies(prev=>prev.map(c=>c.id===visit.companyId ? {
+      ...c, status:newStatus,
+      interest: visit.interest || c.interest,
+      lastVisit: visit.visitDate,
+      lastContact: contactName || c.lastContact,
+      contactTitle: contactTitle || c.contactTitle,
+      supplier: supplier || c.supplier,
+      notes: notes || c.notes,
+      followUpDate: followUpDate || c.followUpDate,
+      attemptCount: (c.attemptCount||0) + 1
+    } : c));
+    setLastVisit(visit);
+    setShowVisitLog(false);
+    setShowPostVisit(true);
+  }, []);
+
+  const handleSaveCo = useCallback((co) => {
+    const exists = companies.find(c=>c.id===co.id);
+    if (exists) setCompanies(prev=>prev.map(c=>c.id===co.id ? co : c));
+    else setCompanies(prev=>[co,...prev]);
+    setShowAddCo(false); setEditingCo(null);
+  }, [companies]);
+
+  const handleImport = useCallback((newCos, newVisits) => {
+    if (newVisits !== undefined) { setCompanies(newCos); setVisits(newVisits); return; }
+    const existing = companies.map(c=>(c.streetAddress+c.city).toLowerCase().replace(/\s/g,''));
+    const toAdd = newCos.filter(c=>!existing.includes((c.streetAddress+c.city).toLowerCase().replace(/\s/g,'')));
+    setCompanies(prev=>[...prev,...toAdd]);
+  }, [companies]);
+
+  const handleAddSearchResults = useCallback((newCompanies) => {
+    const existing = companies.map(c=>(c.companyName+c.city).toLowerCase().replace(/\s/g,''));
+    const toAdd = newCompanies.filter(c=>!existing.includes((c.companyName+c.city).toLowerCase().replace(/\s/g,'')));
+    if (toAdd.length) {
+      setCompanies(prev=>[...toAdd,...prev]);
+      alert(`Added ${toAdd.length} companies to your route!`);
+    } else {
+      alert('All selected companies are already in your list.');
+    }
+  }, [companies]);
+
+  const handleReset = () => {
+    if (window.confirm('Reset to demo data? This clears all current data.')) {
+      setCompanies(DEMO.map(c=>({...c,id:genId()})));
+      setVisits([]);
+    }
+  };
+
+  const handleMode = (mode) => {
+    if (mode==='followups') { setActiveTab('log'); return; }
+    if (territory && !recent.includes(territory)) setRecent(prev=>[territory,...prev.slice(0,4)]);
+    setActiveTab('route');
+  };
+
+  const lastVisitForDup = selected ? visits.find(v=>v.companyId===selected.id) : null;
+
+  return (
+    <div style={{ height:'100dvh', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden', background:'#f1f5f9' }}>
+      <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column' }}>
+        {activeTab==='home'      && <HomeScreen companies={companies} visits={visits} territory={territory} setTerritory={setTerritory} onMode={handleMode} recent={recent} />}
+        {activeTab==='route'     && <RouteScreen companies={companies} territory={territory} onSelect={selectCompany} onAdd={()=>{setEditingCo(null);setShowAddCo(true);}} onSearch={()=>setShowSearch(true)} />}
+        {activeTab==='log'       && <LogScreen visits={visits} companies={companies} onSelect={selectCompany} />}
+        {activeTab==='dashboard' && <DashboardScreen companies={companies} visits={visits} />}
+        {activeTab==='more'      && <MoreScreen companies={companies} visits={visits} onImport={handleImport} onReset={handleReset} />}
+      </div>
+
+      <BottomNav active={activeTab} onChange={setActiveTab} badge={followUpBadge} />
+
+      {showDetail && selected && (
+        <CompanyDetailModal company={selected} visits={visits}
+          onClose={()=>{setShowDetail(false);setSelected(null);}}
+          onLogVisit={openLogVisit}
+          onEdit={(co)=>{ setEditingCo(co); setShowDetail(false); setShowAddCo(true); }} />
+      )}
+
+      {showDuplicate && selected && (
+        <DuplicateModal company={selected} lastVisit={lastVisitForDup}
+          onContinue={()=>{ setShowDuplicate(false); setShowVisitLog(true); }}
+          onSchedule={()=>{
+            const d = new Date(); d.setDate(d.getDate()+1);
+            setCompanies(prev=>prev.map(c=>c.id===selected.id ? {...c, followUpDate:d.toISOString().split('T')[0], status:c.status==='Not Visited'?'Follow Up':c.status} : c));
+            setShowDuplicate(false); setSelected(null);
+          }}
+          onCancel={()=>{ setShowDuplicate(false); setSelected(null); }} />
+      )}
+
+      {showVisitLog && selected && (
+        <VisitLogModal company={selected} onSave={handleVisitSave}
+          onClose={()=>{ setShowVisitLog(false); setSelected(null); }} />
+      )}
+
+      {showPostVisit && selected && lastVisit && (
+        <PostVisitModal company={selected} visit={lastVisit}
+          onSkip={()=>{ setShowPostVisit(false); setSelected(null); }}
+          onFollowUp={()=>{
+            const d = new Date(); d.setDate(d.getDate()+7);
+            setCompanies(prev=>prev.map(c=>c.id===selected.id ? {...c,followUpDate:d.toISOString().split('T')[0]} : c));
+            setShowPostVisit(false); setSelected(null);
+          }} />
+      )}
+
+      {showAddCo && (
+        <AddCompanyModal company={editingCo} onSave={handleSaveCo}
+          onClose={()=>{ setShowAddCo(false); setEditingCo(null); }} />
+      )}
+
+      {showSearch && (
+        <SearchCompaniesModal 
+          onClose={()=>setShowSearch(false)}
+          onAdd={handleAddSearchResults}
+        />
+      )}
+    </div>
+  );
+}
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
