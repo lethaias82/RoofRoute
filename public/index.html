@@ -457,7 +457,6 @@ function SearchCompaniesModal({ onClose, onAdd }) {
     </div>
   );
 }
-
 function InfoTile({ label, value }) {
   if (!value && value !== 0) return null;
   return (
@@ -470,200 +469,6 @@ function InfoTile({ label, value }) {
 
 function SectionHeader({ title }) {
   return <div style={{ fontSize:11, fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:0.8, marginBottom:8, marginTop:4 }}>{title}</div>;
-}
-
-// ─────────────────────────────────────────────
-// HOME SCREEN
-// ─────────────────────────────────────────────
-function HomeScreen({ companies, visits, territory, setTerritory, onMode, recent }) {
-  const today = todayStr();
-  const hot   = companies.filter(c=>c.status==='Hot Lead').length;
-  const warm  = companies.filter(c=>c.status==='Warm Lead').length;
-  const custs = companies.filter(c=>c.status==='Customer').length;
-  const due   = companies.filter(c=>c.followUpDate && c.followUpDate<=today && !['Not Interested','Not Canvassable','Wrong Business'].includes(c.status)).length;
-  const notVis= companies.filter(c=>c.status==='Not Visited').length;
-
-  return (
-    <div className="screen" style={{ padding:'16px 14px 90px' }}>
-      <div style={{ textAlign:'center', marginBottom:20, paddingTop:8 }}>
-        <div style={{ fontSize:30, fontWeight:900, color:'#1e3a5f', letterSpacing:-1, lineHeight:1 }}>🏗 RoofRoute</div>
-        <div style={{ fontSize:13, color:'#64748b', marginTop:4 }}>Find roofers. Route smarter. Follow up faster.</div>
-      </div>
-
-      <div className="card" style={{ marginBottom:12 }}>
-        <div style={{ fontSize:11, fontWeight:800, color:'#64748b', textTransform:'uppercase', letterSpacing:0.8, marginBottom:8 }}>🗺 Where are you hunting today?</div>
-        <input className="field-input" type="text" value={territory} onChange={e=>setTerritory(e.target.value)}
-          placeholder="Enter city or area..." style={{ marginBottom: recent.length ? 10 : 0 }} />
-        {recent.length > 0 && (
-          <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
-            {recent.map(t=>(
-              <button key={t} onClick={()=>setTerritory(t)}
-                style={{ padding:'7px 13px', borderRadius:20, background: territory===t ? '#dbeafe':'#f1f5f9', color: territory===t ? '#1d4ed8':'#374151', border: territory===t ? '1.5px solid #93c5fd':'1.5px solid #e5e7eb', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-                {t}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:14 }}>
-        {[
-          { id:'city',      icon:'🏙', label:'City Search',    color:'#2563eb', bg:'#2563eb' },
-          { id:'nearby',    icon:'📍', label:'Nearby Me',      color:'white',   bg:'#f97316' },
-          { id:'suggested', icon:'🎯', label:'Suggested',      color:'#1e3a5f', bg:'#e0f2fe', tc:'#0369a1' },
-          { id:'followups', icon:'🔔', label: due>0 ? `Follow-Ups (${due})` : 'Follow-Ups', color:'white', bg: due>0 ? '#16a34a' : '#64748b' },
-        ].map(m=>(
-          <button key={m.id} className="btn" onClick={()=>onMode(m.id)}
-            style={{ background:m.bg, color:m.tc||'white', flexDirection:'column', gap:5, minHeight:76, fontSize:14 }}>
-            <span style={{ fontSize:26 }}>{m.icon}</span>
-            {m.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="card">
-        <div style={{ fontSize:11, fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:0.8, marginBottom:12 }}>📊 Territory Snapshot</div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
-          {[
-            { label:'Companies',   val:companies.length, color:'#2563eb' },
-            { label:'Visits',      val:visits.length,    color:'#7c3aed' },
-            { label:'Not Visited', val:notVis,           color:'#94a3b8' },
-            { label:'Hot Leads',   val:hot,              color:'#dc2626' },
-            { label:'Warm Leads',  val:warm,             color:'#d97706' },
-            { label:'Follow-Ups',  val:due,              color:'#16a34a' },
-            { label:'Customers',   val:custs,            color:'#15803d' },
-            { label:'Spoke',       val:visits.filter(v=>v.spoke).length, color:'#0891b2' },
-            { label:'Today',       val:visits.filter(v=>v.visitDate&&v.visitDate.startsWith(today)).length, color:'#7c3aed' },
-          ].map(s=>(
-            <div key={s.label} style={{ background:'#f8fafc', borderRadius:10, padding:'10px 4px', textAlign:'center' }}>
-              <div style={{ fontSize:22, fontWeight:800, color:s.color, lineHeight:1 }}>{s.val}</div>
-              <div style={{ fontSize:10, color:'#94a3b8', fontWeight:700, marginTop:2 }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// COMPANY CARD
-// ─────────────────────────────────────────────
-function CompanyCard({ company, onSelect }) {
-  const days = daysAgo(company.lastVisit);
-  const dueToday = company.followUpDate && company.followUpDate <= todayStr();
-  const lc = statusColor(company.status);
-
-  return (
-    <div onClick={()=>onSelect(company)}
-      style={{ background:'white', borderRadius:14, padding:'13px 14px', marginBottom:10,
-        boxShadow:'0 1px 4px rgba(0,0,0,0.08)', borderLeft:`4px solid ${lc}`, cursor:'pointer',
-        display:'flex', alignItems:'center', gap:12 }}>
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8, marginBottom:3 }}>
-          <div style={{ fontWeight:800, fontSize:15, color:'#1e293b', lineHeight:1.25, flex:1 }}>{company.companyName}</div>
-          <StatusBadge status={company.status} sm />
-        </div>
-        <div style={{ color:'#64748b', fontSize:13, marginBottom:5 }}>{company.streetAddress}, {company.city}</div>
-        <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
-          {company.accessType && company.accessType!=='Unknown' && (
-            <span style={{ fontSize:11, color:'#64748b', background:'#f1f5f9', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>{company.accessType}</span>
-          )}
-          {company.supplier && (
-            <span style={{ fontSize:11, color:'#7c3aed', background:'#f5f3ff', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>📦 {company.supplier}</span>
-          )}
-          {company.attemptCount > 0 && (
-            <span style={{ fontSize:11, color:'#94a3b8' }}>
-              {company.attemptCount} visit{company.attemptCount!==1?'s':''}{days!==null ? ` · ${days===0?'Today':days+'d ago'}` : ''}
-            </span>
-          )}
-          {dueToday && (
-            <span style={{ fontSize:11, background:'#fef9c3', color:'#854d0e', padding:'2px 8px', borderRadius:10, fontWeight:700 }}>📅 Due today</span>
-          )}
-        </div>
-      </div>
-      <div style={{ color:'#cbd5e1', fontSize:18, flexShrink:0 }}>›</div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// ROUTE SCREEN
-// ─────────────────────────────────────────────
-function RouteScreen({ companies, territory, onSelect, onAdd, onSearch }) {
-  const [filter, setFilter] = useState('All');
-  const [search, setSearch] = useState('');
-
-  const filters = ['All','Not Visited','Hot Lead','Warm Lead','Follow Up','No Contact','Revisit Later','Customer'];
-
-  const list = useMemo(() => {
-    let l = [...companies];
-    if (territory) {
-      const q = territory.toLowerCase();
-      l = l.filter(c =>
-        c.city.toLowerCase().includes(q) ||
-        c.streetAddress.toLowerCase().includes(q) ||
-        c.state.toLowerCase().includes(q) ||
-        `${c.city} ${c.state}`.toLowerCase().includes(q)
-      );
-    }
-    if (filter !== 'All') l = l.filter(c => c.status === filter);
-    if (search) {
-      const q = search.toLowerCase();
-      l = l.filter(c => c.companyName.toLowerCase().includes(q) || c.streetAddress.toLowerCase().includes(q) || c.city.toLowerCase().includes(q));
-    }
-    return l.sort((a,b) => (STATUS_PRIORITY[a.status]??99)-(STATUS_PRIORITY[b.status]??99));
-  }, [companies, territory, filter, search]);
-
-  return (
-    <div className="screen">
-      <div style={{ background:'white', padding:'10px 12px 8px', borderBottom:'1px solid #f1f5f9', position:'sticky', top:0, zIndex:10 }}>
-        <input className="field-input" type="search" value={search} onChange={e=>setSearch(e.target.value)}
-          placeholder={territory ? `Search in ${territory}...` : 'Search all companies...'}
-          style={{ marginBottom:10 }} />
-        <div style={{ display:'flex', gap:7, overflowX:'auto', paddingBottom:2 }}>
-          {filters.map(f=>(
-            <button key={f} onClick={()=>setFilter(f)}
-              style={{ flexShrink:0, padding:'7px 14px', borderRadius:20, fontSize:12, fontWeight:700, border:'none', cursor:'pointer',
-                background: filter===f ? '#2563eb' : '#f1f5f9', color: filter===f ? 'white' : '#374151' }}>
-              {f}
-              {f!=='All' && companies.filter(c=>c.status===f).length > 0 && (
-                <span style={{ marginLeft:5, fontSize:11, opacity:0.8 }}>({companies.filter(c=>c.status===f).length})</span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ padding:'12px 12px 90px' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
-          <span style={{ fontSize:13, color:'#94a3b8', fontWeight:600 }}>
-            {list.length} compan{list.length!==1?'ies':'y'}{territory ? ` · ${territory}` : ''}
-          </span>
-          <div style={{ display:'flex', gap: 8 }}>
-            <button onClick={onSearch}
-              style={{ background:'#f97316', color:'white', border:'none', borderRadius:10, padding:'7px 14px', fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
-              🔍 Search
-            </button>
-            <button onClick={onAdd}
-              style={{ background:'#2563eb', color:'white', border:'none', borderRadius:10, padding:'7px 14px', fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
-              ＋ Add
-            </button>
-          </div>
-        </div>
-
-        {list.length === 0 ? (
-          <div style={{ textAlign:'center', padding:'60px 20px', color:'#94a3b8' }}>
-            <div style={{ fontSize:52, marginBottom:12 }}>🏢</div>
-            <div style={{ fontSize:17, fontWeight:700, marginBottom:6 }}>No companies found</div>
-            <div style={{ fontSize:14 }}>Try a different filter, or import a list in the More tab</div>
-          </div>
-        ) : (
-          list.map(c => <CompanyCard key={c.id} company={c} onSelect={onSelect} />)
-        )}
-      </div>
-    </div>
-  );
 }
 
 // ─────────────────────────────────────────────
@@ -976,7 +781,7 @@ function CompanyDetailModal({ company, visits, onClose, onLogVisit, onEdit }) {
           )}
 
           <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8, marginBottom:12 }}>
-            <a href={`http://googleusercontent.com/maps.google.com/61{mapsQ}`} target="_blank" rel="noreferrer"
+            <a href={`http://maps.google.com/?q=${mapsQ}`} target="_blank" rel="noreferrer"
               style={{ background:'#eff6ff', color:'#2563eb', borderRadius:12, padding:'12px 6px', textAlign:'center', textDecoration:'none', fontWeight:800, fontSize:12, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
               <span style={{ fontSize:22 }}>🗺</span>Navigate
             </a>
